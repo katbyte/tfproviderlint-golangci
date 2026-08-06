@@ -4,6 +4,13 @@ A [golangci-lint](https://golangci-lint.run/) module plugin exposing [tfprovider
 
 tfproviderlint itself ships no plugin support; this is a thin shim around its exported `passes.AllChecks` (and `xpasses.AllChecks` for the extended `tfproviderlintx` checks), which are standard `golang.org/x/tools/go/analysis` analyzers.
 
+Mirroring upstream's two binaries, one module registers two linters — enable one or the other (`tfproviderlintx` already includes every standard check):
+
+| Linter | Checks | Upstream equivalent |
+|---|---|---|
+| `tfproviderlint` | AT, R, S, V | `tfproviderlint` |
+| `tfproviderlintx` | AT, R, S, V + XAT, XR, XS | `tfproviderlintx` |
+
 ## Installation
 
 Add to your `.custom-gcl.yml` (shown alongside [azproviderlint](https://github.com/katbyte/azproviderlint) — plugins combine freely):
@@ -39,7 +46,7 @@ linters:
 
 ## Settings
 
-All checks run by default. `enable`/`disable` filter by check name, `extended` adds the `tfproviderlintx` X checks, and `flags` sets per-check flags using the same names as the tfproviderlint CLI (`-AT001.ignored-filename-suffixes` becomes check `AT001`, flag `ignored-filename-suffixes`). Flags are a list rather than dotted map keys because golangci-lint's config loader lowercases map keys and treats dots as nesting:
+All checks run by default. `enable`/`disable` filter by check name, and `flags` sets per-check flags using the same names as the tfproviderlint CLI (`-AT001.ignored-filename-suffixes` becomes check `AT001`, flag `ignored-filename-suffixes`). Flags are a list rather than dotted map keys because golangci-lint's config loader lowercases map keys and treats dots as nesting. Both linters take the same settings shape:
 
 ```yaml
 linters:
@@ -48,7 +55,6 @@ linters:
       tfproviderlint:
         type: module
         settings:
-          extended: false
           enable: [AT001, AT005, AT006, AT007, R001, R002, R003, R004, R006, S001, S002]
           flags:
             - check: AT001
@@ -59,7 +65,7 @@ linters:
               value: pluginsdk
 ```
 
-An empty `enable` list means all checks; a check named in `enable`/`disable`/`flags` that does not exist is a configuration error, not silently ignored. X checks are only known when `extended: true`.
+An empty `enable` list means all checks; a check named in `enable`/`disable`/`flags` that does not exist is a configuration error, not silently ignored. X checks are only known to `tfproviderlintx`, matching the upstream binaries.
 
 ## Improvements Over the Standalone Binaries
 

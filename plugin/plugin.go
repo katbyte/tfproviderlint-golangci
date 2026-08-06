@@ -16,9 +16,23 @@ import (
 )
 
 func init() {
+	// mirror upstream's two binaries: tfproviderlint runs the standard checks,
+	// tfproviderlintx runs the standard checks plus the extended X checks — enable one or
+	// the other, not both (tfproviderlintx already includes every standard check)
 	register.Plugin("tfproviderlint", New)
+	register.Plugin("tfproviderlintx", NewX)
 
-	version := tfproviderlintVersion()
+	// resolve the wrapped tfproviderlint version from build info so doc URLs always match
+	// the go.mod pin
+	version := "main"
+	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, dep := range info.Deps {
+			if dep.Path == "github.com/bflad/tfproviderlint" {
+				version = dep.Version
+			}
+		}
+	}
+
 	for _, a := range passes.AllChecks {
 		decorate(a, "passes", version)
 	}
@@ -28,31 +42,9 @@ func init() {
 }
 
 func decorate(a *analysis.Analyzer, dir, version string) {
-	stripSelfPrefix(a)
-
-	// upstream sets no URL but documents every check; link the exact wrapped version
-	if a.URL == "" {
-		a.URL = fmt.Sprintf("https://github.com/bflad/tfproviderlint/blob/%s/%s/%s/README.md", version, dir, a.Name)
-	}
-}
-
-// tfproviderlintVersion returns the wrapped tfproviderlint module version from build info,
-// so doc URLs always match the go.mod pin.
-func tfproviderlintVersion() string {
-	if info, ok := debug.ReadBuildInfo(); ok {
-		for _, dep := range info.Deps {
-			if dep.Path == "github.com/bflad/tfproviderlint" {
-				return dep.Version
-			}
-		}
-	}
-	return "main"
-}
-
-// stripSelfPrefix rewrites diagnostics as they are reported: tfproviderlint embeds the check
-// name in its messages ("S006: schema ...") and golangci-lint prefixes the analyzer name
-// again ("S006: S006: schema ..."), so drop the embedded copy.
-func stripSelfPrefix(a *analysis.Analyzer) {
+	// tfproviderlint embeds the check name in its messages ("S006: schema ...") and
+	// golangci-lint prefixes the analyzer name again ("S006: S006: schema ..."), so drop
+	// the embedded copy as diagnostics are reported
 	run := a.Run
 	prefix := a.Name + ": "
 	a.Run = func(pass *analysis.Pass) (any, error) {
@@ -63,13 +55,17 @@ func stripSelfPrefix(a *analysis.Analyzer) {
 		}
 		return run(pass)
 	}
+
+	// upstream sets no URL but documents every check; link the exact wrapped version
+	if a.URL == "" {
+		a.URL = fmt.Sprintf("https://github.com/bflad/tfproviderlint/blob/%s/%s/%s/README.md", version, dir, a.Name)
+	}
 }
 
-// Settings configures the plugin from .golangci.yml via
-// linters.settings.custom.tfproviderlint.settings:
+// Settings configures either plugin from .golangci.yml via
+// linters.settings.custom.tfproviderlint(x).settings:
 //
 //	settings:
-//	  extended: false                 # also include the tfproviderlintx (X*) checks
 //	  enable: [AT001, R001]           # empty means all checks
 //	  disable: [S001]
 //	  flags:                          # per-check flags, named as on the tfproviderlint CLI
@@ -80,10 +76,9 @@ func stripSelfPrefix(a *analysis.Analyzer) {
 // Flags are a list rather than a "AT001.ignored-filename-suffixes" style map because
 // golangci-lint's config loader lowercases map keys and treats dots as nesting.
 type Settings struct {
-	Enable   []string `json:"enable"`
-	Disable  []string `json:"disable"`
-	Extended bool     `json:"extended"`
-	Flags    []Flag   `json:"flags"`
+	Enable  []string `json:"enable"`
+	Disable []string `json:"disable"`
+	Flags   []Flag   `json:"flags"`
 }
 
 // Flag sets one flag on one check, e.g. tfproviderlint's -AT001.ignored-filename-suffixes
@@ -94,22 +89,34 @@ type Flag struct {
 	Value any    `json:"value"`
 }
 
+// New builds the tfproviderlint plugin: the standard checks only.
 func New(settings any) (register.LinterPlugin, error) {
+	return newPlugin(settings, false)
+}
+
+// NewX builds the tfproviderlintx plugin: the standard checks plus the extended X checks,
+// mirroring upstream's tfproviderlintx binary.
+func NewX(settings any) (register.LinterPlugin, error) {
+	return newPlugin(settings, true)
+}
+
+func newPlugin(settings any, extended bool) (register.LinterPlugin, error) {
 	s, err := register.DecodeSettings[Settings](settings)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Plugin{settings: s}, nil
+	return &Plugin{settings: s, extended: extended}, nil
 }
 
 type Plugin struct {
 	settings Settings
+	extended bool
 }
 
 func (p *Plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 	all := passes.AllChecks
-	if p.settings.Extended {
+	if p.extended {
 		all = slices.Concat(passes.AllChecks, xpasses.AllChecks)
 	}
 

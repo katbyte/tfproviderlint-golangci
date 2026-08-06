@@ -6,12 +6,13 @@ import (
 
 	"github.com/bflad/tfproviderlint/passes"
 	"github.com/bflad/tfproviderlint/xpasses"
+	"github.com/golangci/plugin-module-register/register"
 )
 
-func buildAnalyzers(t *testing.T, settings any) ([]string, error) {
+func buildWith(t *testing.T, constructor func(any) (register.LinterPlugin, error), settings any) ([]string, error) {
 	t.Helper()
 
-	p, err := New(settings)
+	p, err := constructor(settings)
 	if err != nil {
 		return nil, err
 	}
@@ -28,6 +29,11 @@ func buildAnalyzers(t *testing.T, settings any) ([]string, error) {
 	return names, nil
 }
 
+func buildAnalyzers(t *testing.T, settings any) ([]string, error) {
+	t.Helper()
+	return buildWith(t, New, settings)
+}
+
 func TestBuildAnalyzersDefault(t *testing.T) {
 	names, err := buildAnalyzers(t, nil)
 	if err != nil {
@@ -39,13 +45,13 @@ func TestBuildAnalyzersDefault(t *testing.T) {
 }
 
 func TestBuildAnalyzersExtended(t *testing.T) {
-	names, err := buildAnalyzers(t, map[string]any{"extended": true})
+	names, err := buildWith(t, NewX, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	want := len(passes.AllChecks) + len(xpasses.AllChecks)
 	if len(names) != want {
-		t.Fatalf("expected %d checks with extended, got %d", want, len(names))
+		t.Fatalf("expected %d checks from tfproviderlintx, got %d", want, len(names))
 	}
 }
 
@@ -93,12 +99,12 @@ func TestBuildAnalyzersUnknownCheck(t *testing.T) {
 	}
 }
 
-func TestBuildAnalyzersExtendedCheckRequiresExtended(t *testing.T) {
-	if _, err := buildAnalyzers(t, map[string]any{"enable": []string{"XR001"}}); err == nil {
-		t.Fatal("expected an error enabling an X check without extended: true")
+func TestBuildAnalyzersExtendedCheckRequiresX(t *testing.T) {
+	if _, err := buildWith(t, New, map[string]any{"enable": []string{"XR001"}}); err == nil {
+		t.Fatal("expected an error enabling an X check on the tfproviderlint plugin")
 	}
-	if _, err := buildAnalyzers(t, map[string]any{"extended": true, "enable": []string{"XR001"}}); err != nil {
-		t.Fatalf("expected XR001 to be known with extended: true, got %v", err)
+	if _, err := buildWith(t, NewX, map[string]any{"enable": []string{"XR001"}}); err != nil {
+		t.Fatalf("expected XR001 to be known to the tfproviderlintx plugin, got %v", err)
 	}
 }
 

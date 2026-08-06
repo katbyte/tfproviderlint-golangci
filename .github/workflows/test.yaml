@@ -41,5 +41,17 @@ jobs:
               path: .
           EOF
           "$(go env GOPATH)/bin/golangci-lint" custom
-      - name: Verify the plugin is registered
-        run: ./custom-gcl linters | grep tfproviderlint
+      - name: Verify both linters are registered
+        run: |
+          cat > canary.golangci.yml <<EOF
+          version: "2"
+          linters:
+            default: none
+            enable: [tfproviderlint]
+            settings:
+              custom:
+                tfproviderlint: {type: module}
+                tfproviderlintx: {type: module}
+          EOF
+          ./custom-gcl linters -c canary.golangci.yml | grep -w tfproviderlint
+          ./custom-gcl linters -c canary.golangci.yml | grep -w tfproviderlintx
