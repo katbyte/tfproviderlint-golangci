@@ -61,6 +61,13 @@ linters:
 
 An empty `enable` list means all checks; a check named in `enable`/`disable`/`flags` that does not exist is a configuration error, not silently ignored. X checks are only known when `extended: true`.
 
+## Improvements Over the Standalone Binaries
+
+Beyond sharing golangci-lint's single package-load, config exclusions, `//nolint` and `--new-from-rev`:
+
+- Messages are de-duplicated: tfproviderlint embeds the check name in its messages, which golangci-lint would prefix again (`S006: S006: schema ...`); the plugin strips the embedded copy.
+- Every check gets a documentation `URL` pointing at its README in the exact wrapped tfproviderlint version (upstream sets none), so editors surfacing golangci diagnostics (e.g. gopls/VS Code) link straight to the check's docs.
+
 ## Ignoring Reports
 
 tfproviderlint's own `//lintignore:AT001` comment directives keep working — they are implemented inside the analyzers themselves, so they apply no matter how the checks are run. golangci-lint's `//nolint:tfproviderlint` additionally ignores every check from this plugin on a line.

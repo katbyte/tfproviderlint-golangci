@@ -5,6 +5,7 @@ package plugin
 
 import (
 	"fmt"
+	"runtime/debug"
 	"slices"
 	"strings"
 
@@ -17,14 +18,40 @@ import (
 func init() {
 	register.Plugin("tfproviderlint", New)
 
-	// tfproviderlint embeds the check name in its messages ("S006: schema ...") and
-	// golangci-lint prefixes the analyzer name again ("S006: S006: schema ..."); strip the
-	// embedded prefix once here so reports read cleanly.
-	for _, a := range slices.Concat(passes.AllChecks, xpasses.AllChecks) {
-		stripSelfPrefix(a)
+	version := tfproviderlintVersion()
+	for _, a := range passes.AllChecks {
+		decorate(a, "passes", version)
+	}
+	for _, a := range xpasses.AllChecks {
+		decorate(a, "xpasses", version)
 	}
 }
 
+func decorate(a *analysis.Analyzer, dir, version string) {
+	stripSelfPrefix(a)
+
+	// upstream sets no URL but documents every check; link the exact wrapped version
+	if a.URL == "" {
+		a.URL = fmt.Sprintf("https://github.com/bflad/tfproviderlint/blob/%s/%s/%s/README.md", version, dir, a.Name)
+	}
+}
+
+// tfproviderlintVersion returns the wrapped tfproviderlint module version from build info,
+// so doc URLs always match the go.mod pin.
+func tfproviderlintVersion() string {
+	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, dep := range info.Deps {
+			if dep.Path == "github.com/bflad/tfproviderlint" {
+				return dep.Version
+			}
+		}
+	}
+	return "main"
+}
+
+// stripSelfPrefix rewrites diagnostics as they are reported: tfproviderlint embeds the check
+// name in its messages ("S006: schema ...") and golangci-lint prefixes the analyzer name
+// again ("S006: S006: schema ..."), so drop the embedded copy.
 func stripSelfPrefix(a *analysis.Analyzer) {
 	run := a.Run
 	prefix := a.Name + ": "

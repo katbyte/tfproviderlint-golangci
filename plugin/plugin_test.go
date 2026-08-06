@@ -1,6 +1,7 @@
 package plugin
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/bflad/tfproviderlint/passes"
@@ -69,6 +70,19 @@ func TestBuildAnalyzersDisable(t *testing.T) {
 	for _, name := range names {
 		if name == "AT001" {
 			t.Fatal("AT001 should have been disabled")
+		}
+	}
+}
+
+func TestAnalyzerURLs(t *testing.T) {
+	for _, a := range passes.AllChecks {
+		if !strings.Contains(a.URL, "bflad/tfproviderlint") || !strings.HasSuffix(a.URL, "/passes/"+a.Name+"/README.md") {
+			t.Fatalf("%s URL = %q, want a passes/%s/README.md link", a.Name, a.URL, a.Name)
+		}
+	}
+	for _, a := range xpasses.AllChecks {
+		if !strings.HasSuffix(a.URL, "/xpasses/"+a.Name+"/README.md") {
+			t.Fatalf("%s URL = %q, want an xpasses/%s/README.md link", a.Name, a.URL, a.Name)
 		}
 	}
 }

@@ -1,0 +1,45 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # weekly canary: catches golangci-lint releases or ecosystem drift breaking the
+    # shared-dependency-graph contract between this plugin and golangci-lint
+    - cron: '0 6 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - run: go vet ./...
+      - run: go test ./...
+
+  plugin-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Build a custom golangci-lint with this plugin
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b "$(go env GOPATH)/bin" v2.12.2
+          cat > .custom-gcl.yml <<EOF
+          version: v2.12.2
+          plugins:
+            - module: "github.com/katbyte/tfproviderlint-golangci"
+              import: "github.com/katbyte/tfproviderlint-golangci/plugin"
+              path: .
+          EOF
+          "$(go env GOPATH)/bin/golangci-lint" custom
+      - name: Verify the plugin is registered
+        run: ./custom-gcl linters | grep tfproviderlint
