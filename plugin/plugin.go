@@ -6,6 +6,7 @@ package plugin
 import (
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/bflad/tfproviderlint/passes"
 	"github.com/bflad/tfproviderlint/xpasses"
@@ -15,6 +16,26 @@ import (
 
 func init() {
 	register.Plugin("tfproviderlint", New)
+
+	// tfproviderlint embeds the check name in its messages ("S006: schema ...") and
+	// golangci-lint prefixes the analyzer name again ("S006: S006: schema ..."); strip the
+	// embedded prefix once here so reports read cleanly.
+	for _, a := range slices.Concat(passes.AllChecks, xpasses.AllChecks) {
+		stripSelfPrefix(a)
+	}
+}
+
+func stripSelfPrefix(a *analysis.Analyzer) {
+	run := a.Run
+	prefix := a.Name + ": "
+	a.Run = func(pass *analysis.Pass) (any, error) {
+		report := pass.Report
+		pass.Report = func(d analysis.Diagnostic) {
+			d.Message = strings.TrimPrefix(d.Message, prefix)
+			report(d)
+		}
+		return run(pass)
+	}
 }
 
 // Settings configures the plugin from .golangci.yml via
