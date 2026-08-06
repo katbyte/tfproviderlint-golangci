@@ -90,9 +90,9 @@ func TestBuildAnalyzersExtendedCheckRequiresExtended(t *testing.T) {
 
 func TestBuildAnalyzersFlags(t *testing.T) {
 	settings := map[string]any{
-		"flags": map[string]any{
-			"AT001.ignored-filename-suffixes": "_data_source_test.go",
-			"R006.package-aliases":            "pluginsdk",
+		"flags": []map[string]any{
+			{"check": "AT001", "flag": "ignored-filename-suffixes", "value": "_data_source_test.go"},
+			{"check": "R006", "flag": "package-aliases", "value": "pluginsdk"},
 		},
 	}
 	if _, err := buildAnalyzers(t, settings); err != nil {
@@ -109,13 +109,10 @@ func TestBuildAnalyzersFlags(t *testing.T) {
 }
 
 func TestBuildAnalyzersUnknownFlag(t *testing.T) {
-	if _, err := buildAnalyzers(t, map[string]any{"flags": map[string]any{"AT001.nope": "x"}}); err == nil {
+	if _, err := buildAnalyzers(t, map[string]any{"flags": []map[string]any{{"check": "AT001", "flag": "nope", "value": "x"}}}); err == nil {
 		t.Fatal("expected an error for an unknown flag name")
 	}
-	if _, err := buildAnalyzers(t, map[string]any{"flags": map[string]any{"NOPE001.flag": "x"}}); err == nil {
+	if _, err := buildAnalyzers(t, map[string]any{"flags": []map[string]any{{"check": "NOPE001", "flag": "flag", "value": "x"}}}); err == nil {
 		t.Fatal("expected an error for an unknown check in a flag")
-	}
-	if _, err := buildAnalyzers(t, map[string]any{"flags": map[string]any{"AT001": "x"}}); err == nil {
-		t.Fatal("expected an error for a flag key without <check>.<flag> form")
 	}
 }

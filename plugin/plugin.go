@@ -6,7 +6,6 @@ package plugin
 import (
 	"fmt"
 	"slices"
-	"strings"
 
 	"github.com/bflad/tfproviderlint/passes"
 	"github.com/bflad/tfproviderlint/xpasses"
@@ -26,13 +25,25 @@ func init() {
 //	  enable: [AT001, R001]           # empty means all checks
 //	  disable: [S001]
 //	  flags:                          # per-check flags, named as on the tfproviderlint CLI
-//	    AT001.ignored-filename-suffixes: _data_source_test.go
-//	    R006.package-aliases: pluginsdk
+//	    - check: AT001
+//	      flag: ignored-filename-suffixes
+//	      value: _data_source_test.go
+//
+// Flags are a list rather than a "AT001.ignored-filename-suffixes" style map because
+// golangci-lint's config loader lowercases map keys and treats dots as nesting.
 type Settings struct {
-	Enable   []string       `json:"enable"`
-	Disable  []string       `json:"disable"`
-	Extended bool           `json:"extended"`
-	Flags    map[string]any `json:"flags"`
+	Enable   []string `json:"enable"`
+	Disable  []string `json:"disable"`
+	Extended bool     `json:"extended"`
+	Flags    []Flag   `json:"flags"`
+}
+
+// Flag sets one flag on one check, e.g. tfproviderlint's -AT001.ignored-filename-suffixes
+// is {Check: AT001, Flag: ignored-filename-suffixes, Value: ...}.
+type Flag struct {
+	Check string `json:"check"`
+	Flag  string `json:"flag"`
+	Value any    `json:"value"`
 }
 
 func New(settings any) (register.LinterPlugin, error) {
@@ -64,22 +75,18 @@ func (p *Plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 		}
 	}
 
-	// Per-check flags, e.g. "AT001.ignored-filename-suffixes" — applied before filtering so a
-	// flag on a disabled check is not an error, but a typo in the check or flag name is.
-	for key, value := range p.settings.Flags {
-		name, flagName, ok := strings.Cut(key, ".")
-		if !ok {
-			return nil, fmt.Errorf("invalid tfproviderlint flag %q in settings, expected <check>.<flag>", key)
-		}
-		a := known[name]
+	// Per-check flags — applied before filtering so a flag on a disabled check is not an
+	// error, but a typo in the check or flag name is.
+	for _, f := range p.settings.Flags {
+		a := known[f.Check]
 		if a == nil {
-			return nil, fmt.Errorf("unknown tfproviderlint check %q in flag %q", name, key)
+			return nil, fmt.Errorf("unknown tfproviderlint check %q in flags settings", f.Check)
 		}
-		if a.Flags.Lookup(flagName) == nil {
-			return nil, fmt.Errorf("unknown flag %q for tfproviderlint check %q", flagName, name)
+		if a.Flags.Lookup(f.Flag) == nil {
+			return nil, fmt.Errorf("unknown flag %q for tfproviderlint check %q", f.Flag, f.Check)
 		}
-		if err := a.Flags.Set(flagName, fmt.Sprint(value)); err != nil {
-			return nil, fmt.Errorf("setting tfproviderlint flag %q: %w", key, err)
+		if err := a.Flags.Set(f.Flag, fmt.Sprint(f.Value)); err != nil {
+			return nil, fmt.Errorf("setting tfproviderlint flag %s.%s: %w", f.Check, f.Flag, err)
 		}
 	}
 

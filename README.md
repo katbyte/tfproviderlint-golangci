@@ -39,7 +39,7 @@ linters:
 
 ## Settings
 
-All checks run by default. `enable`/`disable` filter by check name, `extended` adds the `tfproviderlintx` X checks, and `flags` sets per-check flags using the same names as the tfproviderlint CLI (`-AT001.ignored-filename-suffixes` becomes `AT001.ignored-filename-suffixes`):
+All checks run by default. `enable`/`disable` filter by check name, `extended` adds the `tfproviderlintx` X checks, and `flags` sets per-check flags using the same names as the tfproviderlint CLI (`-AT001.ignored-filename-suffixes` becomes check `AT001`, flag `ignored-filename-suffixes`). Flags are a list rather than dotted map keys because golangci-lint's config loader lowercases map keys and treats dots as nesting:
 
 ```yaml
 linters:
@@ -51,8 +51,12 @@ linters:
           extended: false
           enable: [AT001, AT005, AT006, AT007, R001, R002, R003, R004, R006, S001, S002]
           flags:
-            AT001.ignored-filename-suffixes: _data_source_test.go
-            R006.package-aliases: pluginsdk
+            - check: AT001
+              flag: ignored-filename-suffixes
+              value: _data_source_test.go
+            - check: R006
+              flag: package-aliases
+              value: pluginsdk
 ```
 
 An empty `enable` list means all checks; a check named in `enable`/`disable`/`flags` that does not exist is a configuration error, not silently ignored. X checks are only known when `extended: true`.
