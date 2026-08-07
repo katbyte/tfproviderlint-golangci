@@ -1,5 +1,13 @@
 # tfproviderlint-golangci
 
+[![GitHub release](https://img.shields.io/github/v/release/katbyte/tfproviderlint-golangci?color=blueviolet)](https://github.com/katbyte/tfproviderlint-golangci/releases/latest)
+![test](https://github.com/katbyte/tfproviderlint-golangci/actions/workflows/test.yaml/badge.svg)
+![lint](https://github.com/katbyte/tfproviderlint-golangci/actions/workflows/lint.yaml/badge.svg)
+![govulncheck](https://github.com/katbyte/tfproviderlint-golangci/actions/workflows/govulncheck.yaml/badge.svg)
+![CodeQL](https://github.com/katbyte/tfproviderlint-golangci/actions/workflows/codeql-analysis.yml/badge.svg)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/katbyte/tfproviderlint-golangci?color=00ADD8)](https://github.com/katbyte/tfproviderlint-golangci/blob/main/go.mod)
+[![License](https://img.shields.io/github/license/katbyte/tfproviderlint-golangci?color=blue)](https://github.com/katbyte/tfproviderlint-golangci/blob/main/LICENSE)
+
 A [golangci-lint](https://golangci-lint.run/) module plugin exposing [tfproviderlint](https://github.com/bflad/tfproviderlint)'s checks, so they run inside a custom golangci-lint binary — sharing one package-load, one config and one report stream with every other linter — instead of as a separate `tfproviderlint`/`tfproviderlintx` pass over the codebase.
 
 tfproviderlint itself ships no plugin support; this is a thin shim around its exported `passes.AllChecks` (and `xpasses.AllChecks` for the extended `tfproviderlintx` checks), which are standard `golang.org/x/tools/go/analysis` analyzers.
