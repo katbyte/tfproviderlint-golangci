@@ -1,6 +1,6 @@
 *Versions track the wrapped [tfproviderlint](https://github.com/bflad/tfproviderlint) release.*
 
-## Unreleased
+## v0.31.1 (2026-08-07)
 
 - register a second `tfproviderlintx` linter exposing the extended XAT/XR/XS checks alongside the standard set, mirroring upstream's two binaries
 - add lint (golangci-lint), CodeQL, govulncheck, and dependency check workflows
