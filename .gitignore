@@ -3,3 +3,5 @@
 custom-gcl
 
 .idea
+.tools/bin/
+.tools/venv/
